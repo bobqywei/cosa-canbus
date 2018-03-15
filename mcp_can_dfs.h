@@ -4,7 +4,7 @@
 #include "Cosa/SPI.hh"
 #include "Cosa/OutputPin.hh"
 #include "Cosa/AnalogPin.hh"
-#include "Cosa/IOStream.hh"
+#include "Cosa/Trace.hh"
 #include "Cosa/UART.hh"
 
 #ifndef INT32U
@@ -279,15 +279,6 @@
 #define MCP_RXBUF_1 (MCP_RXB1SIDH)
 
 #define SPICS (Board::D53)
-
-void MCP2515_SELECT() {
-  OutputPin spics(SPICS);
-  spics.low();
-}
-void MCP2515_UNSELECT() {
-  OutputPin spics(SPICS);
-  spics.on();
-}
 
 #define MCP2515_OK         (0)
 #define MCP2515_FAIL       (1)

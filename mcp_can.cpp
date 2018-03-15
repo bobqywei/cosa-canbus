@@ -2,20 +2,22 @@
 
 MCP_CAN CAN;
 SPI::Driver DEV(SPICS); // SPI chip select
-IOStream serial(&uart); // debug mode output stream
+#include "Cosa/Trace.hh"
+#include "Cosa/UART.hh"
 /*********************************************************************************************************
 ** Function name:           mcp2515_reset
 ** Descriptions:            reset the device
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_reset(void)                                      
 {
-    MCP2515_SELECT();
+    OutputPin spics(SPICS);
+    spics.low();
     spi.acquire(&DEV);
         spi.begin();
             spi.transfer(MCP_RESET);
         spi.end();
     spi.release();
-    MCP2515_UNSELECT();
+    spics.high();
     delay(10);
 }
 
@@ -25,9 +27,10 @@ void MCP_CAN::mcp2515_reset(void)
 *********************************************************************************************************/
 INT8U MCP_CAN::mcp2515_readRegister(const INT8U address)                                                                     
 {
+    OutputPin spics(SPICS); 
     INT8U ret;
 
-    MCP2515_SELECT();
+    spics.low();
     spi.acquire(&DEV);
         spi.begin();
             spi.transfer(MCP_READ);
@@ -35,7 +38,7 @@ INT8U MCP_CAN::mcp2515_readRegister(const INT8U address)
             ret = spi.transfer(0x00);
         spi.end();
     spi.release();
-    MCP2515_UNSELECT();
+    spics.high();
 
     return ret;
 }
@@ -46,9 +49,10 @@ INT8U MCP_CAN::mcp2515_readRegister(const INT8U address)
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_readRegisterS(const INT8U address, INT8U values[], const INT8U n)
 {
+    OutputPin spics(SPICS); 
 	INT8U i;
 
-	MCP2515_SELECT();
+	spics.low();
     spi.acquire(&DEV);
         spi.begin();
             spi.transfer(MCP_READ);
@@ -59,7 +63,7 @@ void MCP_CAN::mcp2515_readRegisterS(const INT8U address, INT8U values[], const I
             }
         spi.end();
     spi.release();
-	MCP2515_UNSELECT();
+	spics.high();
 }
 
 /*********************************************************************************************************
@@ -68,7 +72,8 @@ void MCP_CAN::mcp2515_readRegisterS(const INT8U address, INT8U values[], const I
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_setRegister(const INT8U address, const INT8U value)
 {
-    MCP2515_SELECT();
+    OutputPin spics(SPICS); 
+    spics.low();
     spi.acquire(&DEV);
         spi.begin();
             spi.transfer(MCP_WRITE);
@@ -76,7 +81,7 @@ void MCP_CAN::mcp2515_setRegister(const INT8U address, const INT8U value)
             spi.transfer(value);
         spi.end();
     spi.release();
-    MCP2515_UNSELECT();
+    spics.high();
 }
 
 /*********************************************************************************************************
@@ -85,9 +90,10 @@ void MCP_CAN::mcp2515_setRegister(const INT8U address, const INT8U value)
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_setRegisterS(const INT8U address, INT8U values[], const INT8U n)
 {
+    OutputPin spics(SPICS); 
     INT8U i;
 
-    MCP2515_SELECT();
+    spics.low();
     spi.acquire(&DEV);
         spi.begin();
             spi.transfer(MCP_WRITE);
@@ -97,7 +103,7 @@ void MCP_CAN::mcp2515_setRegisterS(const INT8U address, INT8U values[], const IN
             }
         spi.end();
     spi.release();
-    MCP2515_UNSELECT();
+    spics.high();
 }
 
 /*********************************************************************************************************
@@ -106,7 +112,8 @@ void MCP_CAN::mcp2515_setRegisterS(const INT8U address, INT8U values[], const IN
 *********************************************************************************************************/
 void MCP_CAN::mcp2515_modifyRegister(const INT8U address, const INT8U mask, const INT8U data)
 {
-    MCP2515_SELECT();
+    OutputPin spics(SPICS); 
+    spics.low();
     spi.acquire(&DEV);
         spi.begin();
             spi.transfer(MCP_BITMOD);
@@ -115,7 +122,7 @@ void MCP_CAN::mcp2515_modifyRegister(const INT8U address, const INT8U mask, cons
             spi.transfer(data);
         spi.end();
     spi.release();
-    MCP2515_UNSELECT();
+    spics.high();
 }
 
 /*********************************************************************************************************
@@ -124,16 +131,17 @@ void MCP_CAN::mcp2515_modifyRegister(const INT8U address, const INT8U mask, cons
 *********************************************************************************************************/
 INT8U MCP_CAN::mcp2515_readStatus(void)                             
 {
+    OutputPin spics(SPICS); 
 	INT8U i;
 
-	MCP2515_SELECT();
+	spics.low();
     spi.acquire(&DEV);
         spi.begin();
             spi.transfer(MCP_READ_STATUS);
             i = spi.transfer(0x00);
         spi.end();
     spi.release();
-	MCP2515_UNSELECT();
+	spics.high();
 	
 	return i;
 }
@@ -288,33 +296,30 @@ void MCP_CAN::mcp2515_initCANBuffers(void)
 ** Function name:           mcp2515_init
 ** Descriptions:            init the &DEVice
 *********************************************************************************************************/
-INT8U MCP_CAN::mcp2515_init(const INT8U canSpeed)                       /* mcp2515init                  */
-{
-
-  INT8U res;
-
+INT8U MCP_CAN::mcp2515_init(const INT8U canSpeed){                      /* mcp2515init                  */
+    INT8U res;
     mcp2515_reset();
 
     res = mcp2515_setCANCTRL_Mode(MODE_CONFIG);
     if(res > 0){
         #if DEBUG_MODE
-            serial.print("Enter setting mode fall\r\n"); 
+            trace << "Enter setting mode fail\r\n"; 
         #endif
         return res;
     }
     #if DEBUG_MODE
-        serial.print("Enter setting mode success \r\n");
+        trace << "Enter setting mode success\r\n";
     #endif
 
     // set boadrate
     if(mcp2515_configRate(canSpeed)){
         #if DEBUG_MODE
-            serial.print("set rate fall!!\r\n");
+            trace << "set rate fail\r\n";
         #endif
         return res;
     }
     #if DEBUG_MODE
-        serial.print("set rate success!!\r\n");
+        trace << "set rate success\r\n";
     #endif
 
     if ( res == MCP2515_OK ) {
@@ -348,13 +353,13 @@ INT8U MCP_CAN::mcp2515_init(const INT8U canSpeed)                       /* mcp25
     res = mcp2515_setCANCTRL_Mode(MODE_NORMAL);                                                                
     if(res){
         #if DEBUG_MODE        
-            serial.print("Enter Normal Mode Fall!!\r\n");
+            trace << "Enter Normal Mode Fail\r\n";
         #endif           
         return res;
     }
 
     #if DEBUG_MODE
-        serial.print("Enter Normal Mode Success!!\r\n");
+        trace << "Enter Normal Mode Success\r\n";
     #endif
 
     }
@@ -491,9 +496,10 @@ INT8U MCP_CAN::mcp2515_getNextFreeTXBuf(INT8U *txbuf_n)                 /* get N
 ** Descriptions:            init can and set speed
 *********************************************************************************************************/
 INT8U MCP_CAN::begin(INT8U speedset) {
+    uart.begin(9600);
+    trace.begin(&uart);
+
     INT8U res;
-    spi.acquire(&DEV);
-    spi.begin();
     res = mcp2515_init(speedset);
     if (res == MCP2515_OK) return CAN_OK;
     else return CAN_FAILINIT;
@@ -504,14 +510,15 @@ INT8U MCP_CAN::begin(INT8U speedset) {
 ** Descriptions:            init canid Masks
 *********************************************************************************************************/
 INT8U MCP_CAN::init_Mask(INT8U num, INT8U ext, INT32U ulData) {
+
     INT8U res = MCP2515_OK;
     #if DEBUG_MODE
-        serial.print("Begin to set Mask!!\r\n");
+        trace << "Begin to set Mask!!\r\n";
     #endif
     res = mcp2515_setCANCTRL_Mode(MODE_CONFIG);
     if(res > 0){
         #if DEBUG_MODE
-            serial.print("Enter setting mode fall\r\n"); 
+            trace << "Enter setting mode fall\r\n"; 
         #endif
         return res;
     }
@@ -525,12 +532,12 @@ INT8U MCP_CAN::init_Mask(INT8U num, INT8U ext, INT32U ulData) {
     res = mcp2515_setCANCTRL_Mode(MODE_NORMAL);
     if(res > 0){
         #if DEBUG_MODE
-            serial.print("Enter normal mode fall\r\n"); 
+            trace << "Enter normal mode fall\r\n"; 
         #endif
         return res;
     }
     #if DEBUG_MODE
-        serial.print("set Mask success!!\r\n");
+        trace << "set Mask success!!\r\n";
     #endif
 
     return res;
@@ -544,12 +551,12 @@ INT8U MCP_CAN::init_Filt(INT8U num, INT8U ext, INT32U ulData)
 {
     INT8U res = MCP2515_OK;
     #if DEBUG_MODE
-        serial.print("Begin to set Filter!!\r\n");
+        trace << "Begin to set Filter!!\r\n";
     #endif
     res = mcp2515_setCANCTRL_Mode(MODE_CONFIG);
     if(res > 0) {
         #if DEBUG_MODE
-            serial.print("Enter setting mode fall\r\n"); 
+            trace << "Enter setting mode fall\r\n"; 
         #endif
         return res;
     }
@@ -586,13 +593,13 @@ INT8U MCP_CAN::init_Filt(INT8U num, INT8U ext, INT32U ulData)
     res = mcp2515_setCANCTRL_Mode(MODE_NORMAL);
     if(res > 0) {
         #if DEBUG_MODE
-            serial.print("Enter normal mode fall\r\nSet filter fail!!\r\n"); 
+            trace << "Enter normal mode fall\r\nSet filter fail!!\r\n"; 
         #endif
         return res;
     }
 
     #if DEBUG_MODE
-        serial.print("set Filter success!!\r\n");
+        trace << "set Filter success!!\r\n";
     #endif
     
     return res;
